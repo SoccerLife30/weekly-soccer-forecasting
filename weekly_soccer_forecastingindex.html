@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Weekly Soccer Team Forecasting</title>
+<style>
+:root{--navy:#102a43;--blue:#1769aa;--green:#198754;--light:#f4f7fb;--line:#d9e2ec;--gold:#f4b400;--red:#c0392b}
+*{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--light);color:#243b53}
+header{background:linear-gradient(135deg,#102a43,#1769aa);color:white;padding:28px 22px}
+header h1{margin:0 0 7px;font-size:28px} header p{margin:0;opacity:.9}
+.container{max-width:1250px;margin:24px auto;padding:0 18px}
+.panel{background:white;border:1px solid var(--line);border-radius:14px;box-shadow:0 5px 18px rgba(16,42,67,.07);padding:20px;margin-bottom:18px}
+.controls{display:grid;grid-template-columns:130px 1fr 1fr 150px 150px auto;gap:10px;align-items:end}
+label{font-size:12px;font-weight:700;display:block;margin-bottom:5px;color:#52606d}
+input,select,button{width:100%;padding:10px 11px;border:1px solid #bcccdc;border-radius:8px;font-size:14px;background:white}
+button{cursor:pointer;font-weight:700;border:0;background:var(--blue);color:white}
+button:hover{filter:brightness(.94)} .secondary{background:#627d98}.danger{background:var(--red)}
+table{width:100%;border-collapse:collapse;overflow:hidden} th{background:#eef3f8;color:#334e68;text-align:left;font-size:13px}
+th,td{padding:12px 10px;border-bottom:1px solid var(--line)} tbody tr:hover{background:#f8fbff}
+.center{text-align:center}.badge{display:inline-block;padding:5px 9px;border-radius:999px;font-weight:700;font-size:12px}
+.home{background:#e4f6eb;color:#137333}.draw{background:#fff4d6;color:#8a5a00}.away{background:#fbe8e6;color:#a93226}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.stat{padding:15px;border-radius:10px;background:#f7f9fc;border:1px solid var(--line)}
+.stat strong{display:block;font-size:25px;color:var(--navy)}.stat span{font-size:12px;color:#627d98}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.actions button{width:auto}
+.empty{text-align:center;padding:35px;color:#627d98}
+.small{font-size:12px;color:#627d98}
+@media(max-width:850px){.controls{grid-template-columns:1fr 1fr}.controls button{grid-column:span 2}.stat-grid{grid-template-columns:1fr 1fr}table{font-size:12px}th,td{padding:8px 6px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="container" style="margin:0 auto">
+    <h1>⚽ Weekly Soccer Team Forecasting</h1>
+    <p>Enter your weekly fixtures and record Home-Draw and Away-Draw forecasts.</p>
+  </div>
+</header>
+
+<div class="container">
+  <section class="panel">
+    <div class="controls">
+      <div><label>Week</label><input id="week" value="Week 1"></div>
+      <div><label>Home Team</label><input id="home" placeholder="e.g. Arsenal"></div>
+      <div><label>Away Team</label><input id="away" placeholder="e.g. Chelsea"></div>
+      <div><label>Home-Draw</label><select id="hd"><option value="">Select</option><option>Home</option><option>Draw</option></select></div>
+      <div><label>Away-Draw</label><select id="ad"><option value="">Select</option><option>Away</option><option>Draw</option></select></div>
+      <button onclick="addMatch()">＋ Add Match</button>
+    </div>
+    <p class="small" style="margin-bottom:0">Tip: use Home-Draw for a double-chance prediction of Home Win or Draw, and Away-Draw for Away Win or Draw.</p>
+  </section>
+
+  <section class="panel">
+    <div class="stat-grid">
+      <div class="stat"><strong id="total">0</strong><span>Total Fixtures</span></div>
+      <div class="stat"><strong id="homes">0</strong><span>Home-Draw: Home</span></div>
+      <div class="stat"><strong id="draws">0</strong><span>Draw Selections</span></div>
+      <div class="stat"><strong id="aways">0</strong><span>Away-Draw: Away</span></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div><h2 style="margin:0;font-size:20px">Weekly Forecast</h2><div class="small">Your forecast schedule</div></div>
+      <div class="actions">
+        <button class="secondary" onclick="loadDemo()">Load Demo</button>
+        <button class="secondary" onclick="exportCSV()">Export CSV</button>
+        <button class="danger" onclick="clearAll()">Clear All</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>#</th><th>Week</th><th>Home Team</th><th>Away Team</th><th>Home-Draw</th><th>Away-Draw</th><th>Action</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script>
+let matches = JSON.parse(localStorage.getItem('soccerForecasts') || '[]');
+
+function save(){localStorage.setItem('soccerForecasts',JSON.stringify(matches)); render();}
+function addMatch(){
+  const week=document.getElementById('week').value.trim();
+  const home=document.getElementById('home').value.trim();
+  const away=document.getElementById('away').value.trim();
+  const hd=document.getElementById('hd').value;
+  const ad=document.getElementById('ad').value;
+  if(!week||!home||!away){alert('Please enter Week, Home Team and Away Team.');return;}
+  matches.push({week,home,away,hd,ad}); save();
+  document.getElementById('home').value='';document.getElementById('away').value='';
+}
+function removeMatch(i){matches.splice(i,1);save();}
+function render(){
+  const body=document.getElementById('rows');
+  body.innerHTML='';
+  if(!matches.length){body.innerHTML='<tr><td colspan="7" class="empty">No fixtures yet. Add your first weekly forecast above.</td></tr>'}
+  matches.forEach((m,i)=>{
+    const hd=m.hd?`<span class="badge ${m.hd==='Home'?'home':'draw'}">${m.hd}</span>`:'—';
+    const ad=m.ad?`<span class="badge ${m.ad==='Away'?'away':'draw'}">${m.ad}</span>`:'—';
+    body.innerHTML+=`<tr><td>${i+1}</td><td><b>${esc(m.week)}</b></td><td>${esc(m.home)}</td><td>${esc(m.away)}</td><td>${hd}</td><td>${ad}</td><td><button class="danger" style="width:auto;padding:7px 10px" onclick="removeMatch(${i})">Delete</button></td></tr>`;
+  });
+  document.getElementById('total').textContent=matches.length;
+  document.getElementById('homes').textContent=matches.filter(x=>x.hd==='Home').length;
+  document.getElementById('draws').textContent=matches.filter(x=>x.hd==='Draw'||x.ad==='Draw').length;
+  document.getElementById('aways').textContent=matches.filter(x=>x.ad==='Away').length;
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function loadDemo(){
+  matches=[
+    {week:'Week 1',home:'Arsenal',away:'Chelsea',hd:'Home',ad:'Draw'},
+    {week:'Week 1',home:'Liverpool',away:'Everton',hd:'Home',ad:'Draw'},
+    {week:'Week 1',home:'Manchester City',away:'Tottenham',hd:'Home',ad:'Away'},
+    {week:'Week 2',home:'Chelsea',away:'Liverpool',hd:'Draw',ad:'Away'},
+    {week:'Week 2',home:'Tottenham',away:'Arsenal',hd:'Draw',ad:'Away'}
+  ]; save();
+}
+function clearAll(){if(confirm('Delete all forecasts?')){matches=[];save();}}
+function exportCSV(){
+  if(!matches.length){alert('There are no fixtures to export.');return;}
+  const header=['Week','Home Team','Away Team','Home-Draw','Away-Draw'];
+  const csv=[header,...matches.map(m=>[m.week,m.home,m.away,m.hd,m.ad])].map(r=>r.map(x=>`"${String(x??'').replaceAll('"','""')}"`).join(',')).join('\\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='weekly_soccer_forecast.csv';a.click();URL.revokeObjectURL(a.href);
+}
+render();
+</script>
+</body>
+</html>
